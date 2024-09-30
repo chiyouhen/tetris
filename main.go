@@ -134,7 +134,7 @@ func drawBackground() {
 	posCursor(0, 0)
 	for y := 0; y < height+2; y++ {
 		posCursor(0, y)
-		terminal.Write(terminal.Escape.Reset)
+		terminal.Write([]byte{033, '[', '7', 'm'})
 		for x := 0; x < width*2+4; x += 2 {
 			terminal.Write([]byte("[]"))
 		}
@@ -144,16 +144,21 @@ func drawBackground() {
 func drawField() {
 	for y, line := range field {
 		for x, c := range line {
-			b := "[]"
-			if c.C == '.' {
-				b = "  "
-			}
-			if c.C == '-' {
-				b = "--"
-			}
 			posCursor(x*2+2, y+1)
-			terminal.Write(c.Color)
-			terminal.Write([]byte(b))
+			terminal.Write(terminal.Escape.Reset)
+			switch c.C {
+			case '.':
+				terminal.Write([]byte{' ', ' '})
+			case '-':
+				terminal.Write(c.Color)
+				terminal.Write([]byte{033, '[', '1', 'm'})
+				terminal.Write([]byte{'-', '-'})
+			case 'X':
+				terminal.Write(c.Color)
+				terminal.Write([]byte{033, '[', '1', 'm'})
+				terminal.Write([]byte{033, '[', '7', 'm'})
+				terminal.Write([]byte{'[', ']'})
+			}
 		}
 	}
 }
@@ -205,6 +210,8 @@ func drawTetromino(block []Bricks, x, y int) {
 			}
 			posCursor(xx*2+x, yy+y)
 			terminal.Write(c.Color)
+			terminal.Write([]byte{033, '[', '1', 'm'})
+			terminal.Write([]byte{033, '[', '7', 'm'})
 			terminal.Write([]byte("[]"))
 		}
 	}
