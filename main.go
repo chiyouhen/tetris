@@ -99,6 +99,8 @@ const (
 	frameBufferHeight     = 40
 )
 
+const brick = "[]"
+
 type Brick struct {
 	Color []byte
 	C     byte
@@ -133,10 +135,10 @@ func newBricks(s string, color []byte) Bricks {
 func drawBackground() {
 	posCursor(0, 0)
 	for y := 0; y < height+2; y++ {
-		posCursor(0, y)
-		terminal.Write([]byte{033, '[', '7', 'm'})
+		terminal.Write([]byte{033, '[', '1', 'm'})
 		for x := 0; x < width*2+4; x += 2 {
-			terminal.Write([]byte("[]"))
+			posCursor(x, y)
+			terminal.Write([]byte(brick))
 		}
 	}
 }
@@ -156,8 +158,7 @@ func drawField() {
 			case 'X':
 				terminal.Write(c.Color)
 				terminal.Write([]byte{033, '[', '1', 'm'})
-				terminal.Write([]byte{033, '[', '7', 'm'})
-				terminal.Write([]byte{'[', ']'})
+				terminal.Write([]byte(brick))
 			}
 		}
 	}
@@ -211,8 +212,7 @@ func drawTetromino(block []Bricks, x, y int) {
 			posCursor(xx*2+x, yy+y)
 			terminal.Write(c.Color)
 			terminal.Write([]byte{033, '[', '1', 'm'})
-			terminal.Write([]byte{033, '[', '7', 'm'})
-			terminal.Write([]byte("[]"))
+			terminal.Write([]byte(brick))
 		}
 	}
 }
