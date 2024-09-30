@@ -155,26 +155,13 @@ func newBricks(s string, color []byte) Bricks {
 	return bricks
 }
 
-var frameBuffer [22][40]Brick
-
-func clearFrameBuffer() {
-	for y, line := range frameBuffer {
-		for x := range line {
-			frameBuffer[y][x] = emptyBrick()
-		}
-	}
-}
-
 func drawBackground() {
-	for y, line := range background {
-		for x, col := range line {
-			if col == '.' {
-				continue
-			}
-			frameBuffer[y][x] = Brick{
-				Color: terminal.Escape.Reset,
-				C:     col,
-			}
+	posCursor(0, 0)
+	for y := 0; y < height+2; y++ {
+		posCursor(0, y)
+		terminal.Write(terminal.Escape.Reset)
+		for x := 0; x < width*2+4; x += 2 {
+			terminal.Write([]byte("[]"))
 		}
 	}
 }
@@ -182,21 +169,28 @@ func drawBackground() {
 func drawField() {
 	for y, line := range field {
 		for x, c := range line {
+			b := "[]"
 			if c.C == '.' {
-				continue
+				b = "  "
 			}
-			frameBuffer[y+1][x+1] = c
+			if c.C == '-' {
+				b = "--"
+			}
+			posCursor(x*2+2, y+1)
+			terminal.Write(c.Color)
+			terminal.Write([]byte(b))
 		}
 	}
 }
 
 func placeTetromino(tidx int, x, y int, rotation int) {
 	updateTetromino(tetromino, tidx, rotation)
-	drawTetromino(tetromino, x+1, y+1)
+	drawTetromino(tetromino, x*2+2, y+1)
 }
 
 func placeNextTetromino(tidx int, x, y int, rotation int) {
 	updateTetromino(nextTetromino, tidx, rotation)
+	clearPreview(x, y)
 	drawTetromino(nextTetromino, x, y)
 }
 
@@ -234,7 +228,9 @@ func drawTetromino(block []Bricks, x, y int) {
 			if c.C == '.' {
 				continue
 			}
-			frameBuffer[yy+y][xx+x] = c
+			posCursor(xx*2+x, yy+y)
+			terminal.Write(c.Color)
+			terminal.Write([]byte("[]"))
 		}
 	}
 }
@@ -338,14 +334,11 @@ func drawScore(y int, frame int) {
 	}
 }
 
-func render() {
-	posCursor(0, 0)
-	for _, line := range frameBuffer {
-		for _, col := range line {
-			terminal.Write(append(col.Color, col.C))
-		}
-		terminal.Write([]byte("\r\n"))
-
+func clearPreview(x, y int) {
+	for i := 0; i < 4; i++ {
+		posCursor(x, y+i)
+		terminal.Write(terminal.Escape.Reset)
+		terminal.Write([]byte(`        `))
 	}
 }
 
@@ -364,9 +357,9 @@ func posCursor(x, y int) {
 	var bs strings.Builder
 	bs.WriteByte(033)
 	bs.WriteByte('[')
-	bs.WriteString(strconv.Itoa(y))
+	bs.WriteString(strconv.Itoa(y + 1))
 	bs.WriteByte(';')
-	bs.WriteString(strconv.Itoa(x))
+	bs.WriteString(strconv.Itoa(x + 1))
 	bs.WriteByte('H')
 	terminal.Write([]byte(bs.String()))
 }
@@ -382,20 +375,9 @@ func showCursor() {
 }
 
 func tprintf(x, y int, msg string, args ...any) {
-	s := fmt.Sprintf(msg, args...)
-	a := make([]Brick, 0, len([]byte(s)))
-
-	for xx, c := range []byte(s) {
-		b := Brick{
-			Color: nil,
-			C:     c,
-		}
-		if xx == 0 {
-			b.Color = terminal.Escape.Reset
-		}
-		a = append(a, b)
-	}
-	copy(frameBuffer[y][x:], a)
+	posCursor(x, y)
+	terminal.Write(terminal.Escape.Reset)
+	fmt.Fprintf(terminal, msg, args...)
 }
 
 var terminal *term.Terminal
@@ -433,6 +415,8 @@ func main() {
 	defer clearScreen()
 	hideCursor()
 	defer showCursor()
+	drawBackground()
+
 	tkr := time.NewTicker(time.Millisecond * 50)
 	input := make(chan byte, 1)
 	go func() {
@@ -450,7 +434,6 @@ func main() {
 	updateTetromino(tetromino, tidx, rotation)
 	updateTetromino(nextTetromino, nextTidx, nextRotation)
 
-	fmt.Printf("tidx: %d, rotation: %d\n", tidx, rotation)
 	autoDown := maxAutoDown
 	scoreline := -1
 	scoreframe := -1
@@ -522,8 +505,6 @@ func main() {
 			}
 		}
 
-		clearFrameBuffer()
-		drawBackground()
 		drawField()
 
 		if tidx > -1 {
@@ -551,13 +532,13 @@ func main() {
 				}
 			}
 		}
-		tprintf(13, 0, "Next:")
-		placeNextTetromino(nextTidx, 13, 1, nextRotation)
+		tprintf(26, 0, "Next:")
+		placeNextTetromino(nextTidx, 26, 1, nextRotation)
 		if gameover {
-			tprintf(13, 6, "GAME OVER!")
+			tprintf(26, 6, "GAME OVER!")
 		}
 
-		tprintf(13, 5, "Score: %d", totalScore)
+		tprintf(26, 5, "Score: %d", totalScore)
 
 		if debug {
 			tprintf(13, 6, "tidx: %d, rotation: %d", tidx, rotation)
@@ -566,10 +547,9 @@ func main() {
 			tprintf(13, 9, "scoreframe: %d", scoreframe)
 			tprintf(13, 10, "%c", '\U00002014')
 		}
-		tprintf(13, 19, "[H]left [L]right [J]down")
-		tprintf(13, 20, "[F]rotate [Q]quit")
+		tprintf(26, 19, "[H]left [L]right [J]down")
+		tprintf(26, 20, "[F]rotate [Q]quit")
 
-		render()
 		posCursor(x+2, y+2)
 
 	}
