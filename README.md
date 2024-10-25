@@ -3,5 +3,5 @@
 $ go install
 $ tetris # enjoy
 ```
-
-[!screenshot](./screenshot.png)
+# SCREENSHOT
+<img width="400px" src="screenshot.png"></img>
